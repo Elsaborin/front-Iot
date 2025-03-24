@@ -43,7 +43,7 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await axios.get<ApiResponse>("http://moriahmkt.com/iotapp/")
+        const response = await axios.get<ApiResponse>("https://moriahmkt.com/iotapp/test/")
         setApiData(response.data)
         setLoading(false)
       } catch (error) {
@@ -222,4 +222,3 @@ const Dashboard: React.FC = () => {
 }
 
 export default Dashboard
-

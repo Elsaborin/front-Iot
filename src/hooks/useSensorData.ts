@@ -35,7 +35,7 @@ export const useSensorData = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await axios.get<SensorData>("http://moriahmkt.com/iotapp/")
+        const response = await axios.get<SensorData>("https://moriahmkt.com/iotapp/test/")
 
         // Enhance the data with additional fields for demo purposes
         const enhancedData = {
@@ -63,4 +63,3 @@ export const useSensorData = () => {
 
   return { data, loading, error }
 }
-
