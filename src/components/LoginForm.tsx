@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { UserIcon, LockIcon, ThermometerIcon } from 'lucide-react';
+import { UserIcon, LockIcon, Sprout } from 'lucide-react';
 import InputField from './InputField';
 
 interface LoginFormProps {
@@ -40,28 +40,29 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSubmit }) => {
     <div className="w-full max-w-md">
       <div className="mb-8 flex justify-center">
         <div className="relative">
-          <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full blur opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-pulse"></div>
-          <div className="relative p-5 bg-white dark:bg-gray-800 rounded-full">
-            <ThermometerIcon className="w-10 h-10 text-cyan-500" />
+          <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full blur-xl opacity-70 animate-pulse"></div>
+          <div className="relative p-6 bg-white dark:bg-gray-800 rounded-full shadow-2xl">
+            <Sprout className="w-12 h-12 text-emerald-600 dark:text-emerald-400" />
           </div>
         </div>
       </div>
       
-      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800 dark:text-white">
-        Sistema de Monitoreo
+      <h2 className="text-3xl font-bold mb-2 text-center text-gray-900 dark:text-white">
+        AgroMonitor
       </h2>
+      <p className="text-center text-gray-600 dark:text-gray-400 mb-8">Sistema inteligente de monitoreo agrícola</p>
       
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl overflow-hidden">
-        <div className="h-2 bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600"></div>
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden border border-emerald-100 dark:border-emerald-900/30">
+        <div className="h-1.5 bg-gradient-to-r from-emerald-500 to-teal-400"></div>
         
-        <form onSubmit={handleSubmit} className="p-6">
+        <form onSubmit={handleSubmit} className="p-8">
           <InputField
             label="Email"
             type="email"
             placeholder="tu@email.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            icon={<UserIcon className="w-5 h-5 text-gray-400" />}
+            icon={<UserIcon className="w-5 h-5" />}
             error={errors.email}
             required
           />
@@ -72,30 +73,31 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSubmit }) => {
             placeholder="••••••••"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            icon={<LockIcon className="w-5 h-5 text-gray-400" />}
+            icon={<LockIcon className="w-5 h-5" />}
             error={errors.password}
             required
           />
           
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-8">
             <div className="flex items-center">
               <input
                 id="remember-me"
                 type="checkbox"
-                className="h-4 w-4 text-cyan-500 focus:ring-cyan-400 border-gray-300 rounded"
+                className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded"
               />
-              <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
+              <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-800 dark:text-gray-200">
                 Recordarme
               </label>
             </div>
-            
-          
+            <a href="#" className="text-sm font-medium text-emerald-600 hover:text-emerald-500 dark:text-emerald-400">
+              ¿Olvidaste tu contraseña?
+            </a>
           </div>
           
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500 transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed"
+            className="w-full py-3.5 px-4 border-0 rounded-lg shadow-lg text-sm font-medium text-white bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-700 hover:to-teal-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed transform hover:-translate-y-0.5 active:translate-y-0"
           >
             {isLoading ? (
               <span className="flex items-center justify-center">
@@ -111,8 +113,6 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSubmit }) => {
           </button>
         </form>
       </div>
-      
-      
     </div>
   );
 };

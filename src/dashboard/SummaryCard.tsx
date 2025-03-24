@@ -15,25 +15,43 @@ const SummaryCard: React.FC<SummaryCardProps> = ({
   title, 
   value, 
   icon, 
-  change, 
   color 
 }) => {
-  const getGradient = () => {
+  const getIconBgColor = () => {
     switch (color) {
       case 'blue':
-        return 'from-blue-400 to-blue-600';
+        return 'bg-blue-50';
       case 'cyan':
-        return 'from-cyan-400 to-cyan-600';
+        return 'bg-cyan-50';
       case 'purple':
-        return 'from-purple-400 to-purple-600';
+        return 'bg-purple-50';
       case 'green':
-        return 'from-green-400 to-green-600';
+        return 'bg-green-50';
       case 'yellow':
-        return 'from-yellow-400 to-yellow-600';
+        return 'bg-yellow-50';
       case 'red':
-        return 'from-red-400 to-red-600';
+        return 'bg-red-50';
       default:
-        return 'from-blue-400 to-blue-600';
+        return 'bg-blue-50';
+    }
+  };
+
+  const getTextColor = () => {
+    switch (color) {
+      case 'blue':
+        return 'text-blue-500';
+      case 'cyan':
+        return 'text-cyan-500';
+      case 'purple':
+        return 'text-purple-500';
+      case 'green':
+        return 'text-green-500';
+      case 'yellow':
+        return 'text-yellow-500';
+      case 'red':
+        return 'text-red-500';
+      default:
+        return 'text-blue-500';
     }
   };
 
@@ -57,24 +75,20 @@ const SummaryCard: React.FC<SummaryCardProps> = ({
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
-      <div className={`h-1 bg-gradient-to-r ${getGradient()}`}></div>
-      <div className="p-5">
-        <div className="flex items-center">
-          <div className={`rounded-full p-3 ${getIconColor()} bg-opacity-10 bg-current`}>
-            {icon}
+    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm h-full p-6">
+      <div className="flex flex-col h-full">
+        <div className="flex items-start">
+          <div className={`${getIconBgColor()} p-3 rounded-lg w-12 h-12 flex items-center justify-center`}>
+            {React.cloneElement(icon as React.ReactElement, {
+              className: `w-6 h-6 ${getIconColor()}`
+            })}
           </div>
-          <div className="ml-5">
-            <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">{title}</h3>
-            <div className="flex items-baseline">
-              <p className="text-2xl font-semibold text-gray-900 dark:text-white">{value}</p>
-              {change && (
-                <p className={`ml-2 text-sm font-medium ${change.isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                  {change.isPositive ? '+' : ''}{change.value}%
-                </p>
-              )}
-            </div>
+          <div className="ml-3">
+            <h3 className="text-base font-medium text-gray-500 dark:text-gray-400">{title}</h3>
           </div>
+        </div>
+        <div className="mt-3">
+          <p className={`text-3xl font-bold ${getTextColor()}`}>{value}</p>
         </div>
       </div>
     </div>

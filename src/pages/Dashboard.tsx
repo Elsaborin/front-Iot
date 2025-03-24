@@ -1,62 +1,225 @@
-import React from 'react';
+"use client"
 
-import { ThermometerIcon, DropletIcon, AlertTriangleIcon, BatteryIcon } from 'lucide-react';
-import Layout from '../layout/Layout';
-import SummaryCard from '../dashboard/SummaryCard';
-import TemperatureChart from '../dashboard/TemperatureChart';
-import HumidityChart from '../dashboard/HumidityChart';
-import DeviceTable from '../dashboard/DeviceTable';
+import type React from "react"
+import { useRef, useEffect, useState } from "react"
+import mapboxgl from "mapbox-gl"
+import "mapbox-gl/dist/mapbox-gl.css"
+import Layout from "../layout/Layout"
+import SensorCards from "../components/SensorCards"
+import axios from "axios"
+
+mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN
+
+interface ApiResponse {
+  sensores: {
+    humedad: number
+    temperatura: number
+    lluvia: number
+    sol: number
+  }
+  parcelas: Array<{
+    id: number
+    nombre: string
+    latitud: number
+    longitud: number
+    sensor: {
+      humedad: number
+      temperatura: number
+      lluvia: number
+      sol: number
+    }
+  }>
+}
 
 const Dashboard: React.FC = () => {
+  const mapContainer = useRef<HTMLDivElement>(null)
+  const map = useRef<mapboxgl.Map | null>(null)
+  const [selectedMarker, setSelectedMarker] = useState<number | null>(null)
+  const [popupRef, setPopupRef] = useState<mapboxgl.Popup | null>(null)
+  const [apiData, setApiData] = useState<ApiResponse | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await axios.get<ApiResponse>("http://moriahmkt.com/iotapp/")
+        setApiData(response.data)
+        setLoading(false)
+      } catch (error) {
+        console.error("Error fetching data:", error)
+        setError("Error al cargar datos de los sensores")
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [])
+
+  useEffect(() => {
+    if (!apiData || !mapContainer.current) return
+    if (map.current) return
+
+    map.current = new mapboxgl.Map({
+      container: mapContainer.current,
+      style: "mapbox://styles/mapbox/streets-v12",
+      center: [-86.87474305194408, 21.063892829835364],
+      zoom: 13,
+      attributionControl: false,
+    })
+
+    map.current.on("load", () => {
+      map.current?.addControl(new mapboxgl.NavigationControl(), "top-right")
+
+      apiData.parcelas.forEach((parcela) => {
+        const el = document.createElement("div")
+        el.className = "custom-marker relative"
+
+        // Create the main marker container
+        const markerContainer = document.createElement("div")
+        markerContainer.className = "flex flex-col items-center"
+
+        // Create the pin part
+        const pin = document.createElement("div")
+        pin.className =
+          "w-8 h-8 bg-gradient-to-br from-emerald-500 to-teal-400 rounded-full flex items-center justify-center shadow-lg transform-gpu transition-transform duration-300 hover:scale-110 z-10"
+
+        // Create the icon inside the pin
+        const icon = document.createElement("div")
+        icon.className = "text-white"
+        icon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s-8-4.5-8-11.8a8 8 0 0 1 16 0c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="3"/></svg>`
+        pin.appendChild(icon)
+
+        // Create the pulse animation
+        const pulse = document.createElement("div")
+        pulse.className = "absolute top-0 left-0 w-8 h-8 rounded-full bg-emerald-400 opacity-70 animate-ping"
+
+        // Create the connector line
+        const connector = document.createElement("div")
+        connector.className = "w-1 h-5 bg-emerald-500 -mt-1"
+
+        // Create the label
+        const label = document.createElement("div")
+        label.className =
+          "bg-white dark:bg-gray-800 text-xs font-medium text-emerald-800 dark:text-emerald-200 px-2 py-1 rounded-md shadow-md -mt-1"
+        label.textContent = parcela.nombre
+
+        // Assemble the marker
+        markerContainer.appendChild(pulse)
+        markerContainer.appendChild(pin)
+        markerContainer.appendChild(connector)
+        markerContainer.appendChild(label)
+        el.appendChild(markerContainer)
+
+        const popup = new mapboxgl.Popup({
+          offset: 25,
+          closeButton: true,
+          className:
+            "custom-popup !bg-white dark:!bg-gray-800 !shadow-lg !rounded-lg !border !border-gray-200 dark:!border-gray-700",
+        }).setHTML(`
+          <div class="p-3">
+            <h3 class="font-bold text-gray-900 dark:text-white text-lg mb-2">${parcela.nombre}</h3>
+            <div class="space-y-1">
+              <p class="text-gray-700 dark:text-gray-300 flex items-center">
+                <span class="inline-block w-3 h-3 rounded-full bg-emerald-500 mr-2"></span>
+                Humedad: <span class="font-medium ml-1">${parcela.sensor.humedad}%</span>
+              </p>
+              <p class="text-gray-700 dark:text-gray-300 flex items-center">
+                <span class="inline-block w-3 h-3 rounded-full bg-red-500 mr-2"></span>
+                Temperatura: <span class="font-medium ml-1">${parcela.sensor.temperatura}°C</span>
+              </p>
+              <p class="text-gray-700 dark:text-gray-300 flex items-center">
+                <span class="inline-block w-3 h-3 rounded-full bg-cyan-500 mr-2"></span>
+                Lluvia: <span class="font-medium ml-1">${parcela.sensor.lluvia}</span>
+              </p>
+            </div>
+          </div>
+        `)
+
+        new mapboxgl.Marker({ element: el, anchor: "bottom" })
+          .setLngLat([parcela.longitud, parcela.latitud])
+          .setPopup(popup)
+          .addTo(map.current!)
+
+        el.addEventListener("click", () => {
+          setSelectedMarker(parcela.id)
+          popupRef?.remove()
+          setPopupRef(popup)
+        })
+      })
+    })
+
+    return () => {
+      map.current?.remove()
+      map.current = null
+    }
+  }, [apiData])
+
+  if (loading)
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-50 dark:bg-gray-900">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Cargando datos...</p>
+        </div>
+      </div>
+    )
+
+  if (error)
+    return (
+      <div className="p-8 text-center">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/20 mb-4">
+          <svg
+            className="w-8 h-8 text-red-500"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+        </div>
+        <p className="text-red-500 text-lg font-medium">{error}</p>
+      </div>
+    )
+
   return (
     <Layout>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
-        <p className="text-gray-600 dark:text-gray-400">Monitoreo de temperatura y humedad en tiempo real</p>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+          Cultivos del Sur | Mapa de ubicaciones
+        </h1>
+        <p className="text-gray-500 dark:text-gray-400">
+          Monitoreo en tiempo real de sensores de temperatura y humedad
+        </p>
       </div>
-      
-      {/* Tarjetas de resumen */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-        <SummaryCard
-          title="Temperatura Promedio"
-          value="24.5°C"
-          icon={<ThermometerIcon className="h-6 w-6" />}
-          change={{ value: 2.5, isPositive: true }}
-          color="red"
-        />
-        <SummaryCard
-          title="Humedad Promedio"
-          value="48%"
-          icon={<DropletIcon className="h-6 w-6" />}
-          change={{ value: 5, isPositive: false }}
-          color="blue"
-        />
-        <SummaryCard
-          title="Alertas Activas"
-          value="3"
-          icon={<AlertTriangleIcon className="h-6 w-6" />}
-          color="yellow"
-        />
-        <SummaryCard
-          title="Batería Promedio"
-          value="76%"
-          icon={<BatteryIcon className="h-6 w-6" />}
-          color="green"
-        />
-      </div>
-      
-      {/* Gráficos */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <TemperatureChart />
-        <HumidityChart />
-      </div>
-      
-      {/* Tabla de dispositivos */}
-      <div className="mb-6">
-        <DeviceTable />
+
+      <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-180px)]">
+        <div className="w-full lg:w-[60%] bg-white dark:bg-gray-800 rounded-xl shadow-md border border-gray-100 dark:border-gray-700 p-4 transition-all duration-300 hover:shadow-lg">
+          <div className="h-full w-full bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden relative">
+            <div ref={mapContainer} className="absolute inset-0" />
+          </div>
+        </div>
+
+        <div className="w-full lg:w-[40%]">
+          {apiData && (
+            <SensorCards
+              temperatura={apiData.sensores.temperatura}
+              humedad={apiData.sensores.humedad}
+              lluvia={apiData.sensores.lluvia}
+              sol={apiData.sensores.sol}
+            />
+          )}
+        </div>
       </div>
     </Layout>
-  );
-};
+  )
+}
 
-export default Dashboard;
+export default Dashboard
+

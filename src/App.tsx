@@ -1,16 +1,10 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import Login from './pages/Login';
+
 import Dashboard from './pages/Dashboard';
 import NotFound from './pages/NotFound';
 import { isAuthenticated } from './utils/auth';
-
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  if (!isAuthenticated()) {
-    return <Navigate to="/login" replace />;
-  }
-  return <>{children}</>;
-};
+import Parcelas from './pages/Parcelas';
 
 const PublicRoute = ({ children }: { children: React.ReactNode }) => {
   if (isAuthenticated()) {
@@ -23,23 +17,9 @@ const App: React.FC = () => {
   return (
     <Router>
       <Routes>
-        <Route
-          path="/login"
-          element={
-            <PublicRoute>
-              <Login />
-            </PublicRoute>
-          }
-        />
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/parcelas" element={<Parcelas />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Router>
