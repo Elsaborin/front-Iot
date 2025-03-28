@@ -1,11 +1,11 @@
-"use client"
-
-import type React from "react"
+import type { FC } from "react"
 import { useState } from "react"
-import { HomeIcon, BarChart3Icon, CloudRainIcon, SunIcon, ThermometerIcon, DropletIcon, MapPinIcon, SproutIcon as SeedlingIcon, AlertTriangleIcon, SettingsIcon, UsersIcon, HelpCircleIcon } from 'lucide-react'
+import { HomeIcon, LandPlot, BarChart3Icon } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
 interface SidebarProps {
-  open: boolean
+  open: boolean;
+  currentPath: string;
 }
 
 interface NavItem {
@@ -16,23 +16,28 @@ interface NavItem {
   children?: NavItem[]
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ open }) => {
+const Sidebar: FC<SidebarProps> = ({ open, currentPath }) => {
   const [expandedItems, setExpandedItems] = useState<string[]>(["Monitoreo"])
 
   const toggleExpand = (name: string) => {
     setExpandedItems((prev) => (prev.includes(name) ? prev.filter((item) => item !== name) : [...prev, name]))
   }
 
+  const isCurrentPath = (href: string) => {
+    if (href === 'dashboard' && (currentPath === '/' || currentPath === '/dashboard')) {
+      return true;
+    }
+    return currentPath === `/${href}`;
+  };
+
   const navigation: NavItem[] = [
-    { name: "Dashboard", icon: <HomeIcon className="h-5 w-5" />, href: "dashboard", current: true },
-    
-    { name: "Parcelas", icon: <MapPinIcon className="h-5 w-5" />, href: "parcelas", current: false },
-
+    { name: "Dashboard", icon: <HomeIcon className="h-5 w-5" />, href: "dashboard", current: isCurrentPath('dashboard') },
+    { name: "Parcelas Activas", icon: <LandPlot className="h-5 w-5" />, href: "parcelas", current: isCurrentPath('parcelas') },
+    { name: "Parcelas Inactivas", icon: <LandPlot className="h-5 w-5" />, href: "parcelas-pochas", current: isCurrentPath('parcelas-pochas') },
+    { name: "Gráficos", icon: <BarChart3Icon className="h-5 w-5" />, href: "graficos", current: isCurrentPath('graficos') },
   ]
 
-  const secondaryNavigation: NavItem[] = [
-
-  ]
+  const secondaryNavigation: NavItem[] = []
 
   const renderNavItem = (item: NavItem) => {
     const isExpanded = expandedItems.includes(item.name)
@@ -40,16 +45,14 @@ const Sidebar: React.FC<SidebarProps> = ({ open }) => {
 
     return (
       <li key={item.name}>
-        <a
-          href={item.href}
-          onClick={
-            hasChildren
-              ? (e) => {
-                  e.preventDefault()
-                  toggleExpand(item.name)
-                }
-              : undefined
-          }
+        <Link
+          to={`/${item.href}`}
+          onClick={(e) => {
+            if (hasChildren) {
+              e.preventDefault()
+              toggleExpand(item.name)
+            }
+          }}
           className={`
             flex items-center px-4 py-2.5 text-sm font-medium rounded-lg group transition-all duration-200
             ${
@@ -80,14 +83,14 @@ const Sidebar: React.FC<SidebarProps> = ({ open }) => {
               />
             </svg>
           )}
-        </a>
+        </Link>
 
         {hasChildren && isExpanded && open && (
           <ul className="mt-1 ml-6 space-y-1 border-l-2 border-emerald-100 dark:border-emerald-900/30 pl-2">
             {item.children!.map((child) => (
               <li key={child.name}>
-                <a
-                  href={child.href}
+                <Link
+                  to={`/${child.href}`}
                   className={`
                     flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors duration-200
                     ${
@@ -101,7 +104,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open }) => {
                     {child.icon}
                   </span>
                   {child.name}
-                </a>
+                </Link>
               </li>
             ))}
           </ul>

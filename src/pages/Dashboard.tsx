@@ -1,12 +1,9 @@
-"use client"
-
-import type React from "react"
-import { useRef, useEffect, useState } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
+import axios from "axios"
 import mapboxgl from "mapbox-gl"
 import "mapbox-gl/dist/mapbox-gl.css"
 import Layout from "../layout/Layout"
 import SensorCards from "../components/SensorCards"
-import axios from "axios"
 
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN
 
@@ -37,24 +34,54 @@ const Dashboard: React.FC = () => {
   const [selectedMarker, setSelectedMarker] = useState<number | null>(null)
   const [popupRef, setPopupRef] = useState<mapboxgl.Popup | null>(null)
   const [apiData, setApiData] = useState<ApiResponse | null>(null)
+  const previousDataRef = useRef<ApiResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [lastStoredTime, setLastStoredTime] = useState<number | null>(null)
+
+  const fetchData = useCallback(async () => {
+    try {
+      const response = await axios.get<ApiResponse>("https://moriahmkt.com/iotapp/updated/")
+      const newData = response.data
+      const currentTime = Date.now()
+
+      // Comparación profunda de datos
+      if (JSON.stringify(newData) !== JSON.stringify(previousDataRef.current)) {
+        setApiData(newData)
+        previousDataRef.current = newData
+      }
+
+      // Almacenar cada 5 minutos si hay cambios
+      if (!lastStoredTime || currentTime - lastStoredTime > 300000) {
+        if (JSON.stringify(newData) !== JSON.stringify(previousDataRef.current)) {
+          await storeData(newData)
+          setLastStoredTime(currentTime)
+        }
+      }
+
+      setLoading(false)
+    } catch (error) {
+      console.error("Error fetching data:", error)
+      setError("Error al cargar datos de los sensores")
+      setLoading(false)
+    }
+  }, [lastStoredTime])
+
+  const storeData = async (newData: ApiResponse) => {
+    try {
+      await axios.post("http://127.0.0.1:8000/api/consumir-datos", newData)
+      console.log("Datos almacenados correctamente")
+    } catch (error) {
+      console.error("Error al almacenar los datos:", error)
+    }
+  }
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await axios.get<ApiResponse>("https://moriahmkt.com/iotapp/test/")
-        setApiData(response.data)
-        setLoading(false)
-      } catch (error) {
-        console.error("Error fetching data:", error)
-        setError("Error al cargar datos de los sensores")
-        setLoading(false)
-      }
-    }
+    fetchData() // Llamada inicial
+    const interval = setInterval(fetchData, 120000) // Actualizar cada 2 minutos
 
-    fetchData()
-  }, [])
+    return () => clearInterval(interval)
+  }, [fetchData])
 
   useEffect(() => {
     if (!apiData || !mapContainer.current) return
@@ -75,36 +102,31 @@ const Dashboard: React.FC = () => {
         const el = document.createElement("div")
         el.className = "custom-marker relative"
 
-        // Create the main marker container
+        // Crear marcador y popups (como lo tienes en el código original)
         const markerContainer = document.createElement("div")
         markerContainer.className = "flex flex-col items-center"
 
-        // Create the pin part
         const pin = document.createElement("div")
         pin.className =
           "w-8 h-8 bg-gradient-to-br from-emerald-500 to-teal-400 rounded-full flex items-center justify-center shadow-lg transform-gpu transition-transform duration-300 hover:scale-110 z-10"
 
-        // Create the icon inside the pin
         const icon = document.createElement("div")
         icon.className = "text-white"
         icon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s-8-4.5-8-11.8a8 8 0 0 1 16 0c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="3"/></svg>`
         pin.appendChild(icon)
 
-        // Create the pulse animation
         const pulse = document.createElement("div")
         pulse.className = "absolute top-0 left-0 w-8 h-8 rounded-full bg-emerald-400 opacity-70 animate-ping"
 
-        // Create the connector line
         const connector = document.createElement("div")
         connector.className = "w-1 h-5 bg-emerald-500 -mt-1"
 
-        // Create the label
         const label = document.createElement("div")
+        //es el div donde se muesta el nombre de la parcela
         label.className =
-          "bg-white dark:bg-gray-800 text-xs font-medium text-emerald-800 dark:text-emerald-200 px-2 py-1 rounded-md shadow-md -mt-1"
+          "bg-white dark:bg-gray-800 text-xs font-medium text-emerald-800 dark:text-emerald-200 px-6 py-4 rounded-md shadow-md mt-1"
         label.textContent = parcela.nombre
 
-        // Assemble the marker
         markerContainer.appendChild(pulse)
         markerContainer.appendChild(pin)
         markerContainer.appendChild(connector)
@@ -116,9 +138,9 @@ const Dashboard: React.FC = () => {
           closeButton: true,
           className:
             "custom-popup !bg-white dark:!bg-gray-800 !shadow-lg !rounded-lg !border !border-gray-200 dark:!border-gray-700",
-        }).setHTML(`
-          <div class="p-3">
-            <h3 class="font-bold text-gray-900 dark:text-white text-lg mb-2">${parcela.nombre}</h3>
+        }).setHTML(` 
+          <div class="p-2">
+            <h class="font-bold text-gray-90 dark:text-white text-sm">${ parcela.nombre }</h5>
             <div class="space-y-1">
               <p class="text-gray-700 dark:text-gray-300 flex items-center">
                 <span class="inline-block w-3 h-3 rounded-full bg-emerald-500 mr-2"></span>
@@ -131,6 +153,10 @@ const Dashboard: React.FC = () => {
               <p class="text-gray-700 dark:text-gray-300 flex items-center">
                 <span class="inline-block w-3 h-3 rounded-full bg-cyan-500 mr-2"></span>
                 Lluvia: <span class="font-medium ml-1">${parcela.sensor.lluvia}</span>
+              </p>
+              <p class="text-gray-700 dark:text-gray-300 flex items-center">
+                <span class="inline-block w-3 h-3 rounded-full bg-amber-500 mr-2"></span>
+                Sol: <span class="font-medium ml-1">${parcela.sensor.sol}</span>
               </p>
             </div>
           </div>
@@ -154,6 +180,8 @@ const Dashboard: React.FC = () => {
       map.current = null
     }
   }, [apiData])
+
+
 
   if (loading)
     return (

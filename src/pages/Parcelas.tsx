@@ -2,7 +2,7 @@ import type React from "react"
 import Layout from "../layout/Layout"
 import ParcelaCard from "../components/ParcelaCard"
 import { useSensorData } from "../hooks/useSensorData"
-import { PlusCircleIcon } from "lucide-react"
+
 
 const Parcelas: React.FC = () => {
   const { data, loading, error } = useSensorData()
@@ -11,7 +11,7 @@ const Parcelas: React.FC = () => {
     <Layout>
       <div className="mb-6 flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Parcelas</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Parcelas Activas</h1>
           <p className="text-gray-500 dark:text-gray-400">Gestión y monitoreo de parcelas</p>
         </div>
         
