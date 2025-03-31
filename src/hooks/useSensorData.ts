@@ -3,49 +3,59 @@ import axios from "axios"
 
 // Interfaz para los datos del sensor
 export interface Sensor {
-  humedad: number
-  temperatura: number
-  lluvia: number
-  sol: number
+  humedad?: number
+  temperatura?: number
+  lluvia?: number
+  sol?: number
 }
 
 // Interfaz para los datos de la parcela
 export interface Parcela {
-  id: number;
-  nombre: string;
-  ubicacion: string;
-  responsable: string;
-  tipo_cultivo: string;
-  ultimo_riego: string;
-  latitud: string;
-  longitud: string;
-  sensor?: Sensor; // <- Hacemos opcional el sensor
-  status: string;  // <- Agregar el estado de la parcela
+  id: number
+  nombre: string
+  ubicacion: string
+  responsable: string
+  tipo_cultivo: string
+  ultimo_riego: string | null
+  latitud?: string
+  longitud?: string
+  sensor?: Sensor
+  status: string
 }
 
-
-// El tipo correcto debe ser un objeto con una propiedad 'parcelas' que sea un array de 'Parcela'
-interface SensorData {
-  parcelas: Parcela[] // Debe ser un objeto con una propiedad 'parcelas' que sea un array
-}
-
+// Hook para obtener las parcelas activas e inactivas
 export const useSensorData = () => {
-  const [data, setData] = useState<SensorData | null>(null)
+  const [data, setData] = useState<{ activas: Parcela[]; inactivas: Parcela[] } | null>(null)
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Hacemos la solicitud GET a la URL de la API
-        const response = await axios.get<SensorData>("http://127.0.0.1:8000/api/mediciones/ultimas-parcela")
+        const responseActivas = await axios.get("http://127.0.0.1:8000/api/mediciones/ultimas-parcela")
+        const responseInactivas = await axios.get("http://127.0.0.1:8000/api/parcelas/inactivas")
 
-        // Guardamos la respuesta correctamente en el estado
-        setData({ parcelas: response.data }) // Ahora correctamente estamos almacenando un objeto con la propiedad 'parcelas'
-        setLoading(false)
+        console.log("🔹 Respuesta API activas:", responseActivas.data)
+        console.log("🔹 Respuesta API inactivas:", responseInactivas.data)
+
+        // Revisar cómo la API devuelve los datos
+        let parcelasActivas = []
+        if (Array.isArray(responseActivas.data)) {
+          parcelasActivas = responseActivas.data // Es un array directo
+        } else if (responseActivas.data?.parcelas) {
+          parcelasActivas = responseActivas.data.parcelas // Es un objeto con la clave "parcelas"
+        }
+
+        const parcelasInactivas = Array.isArray(responseInactivas.data) ? responseInactivas.data : []
+
+        console.log("✅ Parcelas activas procesadas:", parcelasActivas)
+        console.log("✅ Parcelas inactivas procesadas:", parcelasInactivas)
+
+        setData({ activas: parcelasActivas, inactivas: parcelasInactivas })
       } catch (error) {
-        console.error("Error fetching data:", error)
-        setError("Error al cargar datos de los sensores")
+        console.error("❌ Error fetching data:", error)
+        setError("Error al obtener los datos")
+      } finally {
         setLoading(false)
       }
     }
@@ -53,37 +63,9 @@ export const useSensorData = () => {
     fetchData()
   }, [])
 
-  return { data, loading, error }
-}
-
-export const useInactiveSensors = () => {
-  const [data, setData] = useState<{ sensoresInactivos: Parcela[] } | null>(null) // <- Corrige la estructura
-  const [loading, setLoading] = useState<boolean>(true)
-  const [error, setError] = useState<string | null>(null)
-
   useEffect(() => {
-    const fetchInactiveSensors = async () => {
-      try {
-        // Llamada a la API para obtener parcelas con sensores inactivos
-        const response = await axios.get<Parcela[]>("http://127.0.0.1:8000/api/parcelas/inactivas")
-
-        // Guardamos los datos correctamente en el estado
-        setData({ sensoresInactivos: response.data.map(parcela => ({
-          ...parcela,
-          sensor: parcela.sensor || undefined // Asegurar que las parcelas inactivas puedan manejar un sensor opcional
-        }))});
-        
-        setLoading(false)
-      } catch (error) {
-        console.error("Error fetching inactive sensors:", error)
-        setError("Error al cargar sensores inactivos")
-        setLoading(false)
-      }
-    }
-
-    fetchInactiveSensors()
-  }, [])
+    console.log("📌 Datos guardados en el estado:", data)
+  }, [data])
 
   return { data, loading, error }
 }
-

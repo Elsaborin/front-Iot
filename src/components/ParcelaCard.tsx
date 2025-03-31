@@ -1,36 +1,43 @@
-import React from "react";
-import WeatherCard from "./WeatherCard";
+import React from "react"
+import WeatherCard from "./WeatherCard"
 import {
   MapPinIcon,
   UserIcon,
   SproutIcon as SeedlingIcon,
   DropletIcon,
-} from "lucide-react";
+} from "lucide-react"
 
+// Interfaz de parcela
 interface Sensor {
-  temperatura?: number;
-  humedad?: number;
-  lluvia?: number;
-  sol?: number;
+  temperatura?: number
+  humedad?: number
+  lluvia?: number
+  sol?: number
 }
 
 interface Parcela {
-  id: number;
-  nombre: string;
-  ubicacion: string;
-  responsable: string;
-  tipo_cultivo: string;
-  sensor?: Sensor; // Puede ser undefined si es inactiva
-  ultimo_riego: string | null; // Aseguramos que puede ser null
-  status: string; // Estado de la parcela
+  id: number
+  nombre: string
+  ubicacion: string
+  responsable: string
+  tipo_cultivo: string
+  sensor?: Sensor
+  ultimo_riego: string | null
+  status: string
 }
 
 interface ParcelaCardProps {
-  parcela: Parcela;
+  parcela: Parcela
 }
 
 const ParcelaCard: React.FC<ParcelaCardProps> = ({ parcela }) => {
-  const isInactive = parcela.status === "inactive";
+  const isInactive = parcela.status === "inactive"
+
+  // Convertir la fecha de último riego a un formato legible
+  const formattedLastIrrigation =
+    parcela.ultimo_riego && !isNaN(Date.parse(parcela.ultimo_riego))
+      ? new Date(parcela.ultimo_riego).toLocaleString()
+      : "No registrado"
 
   return (
     <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-md border border-emerald-100/50 dark:border-emerald-900/20 rounded-xl p-6 shadow-md hover:shadow-lg transition-all duration-300 group">
@@ -70,7 +77,6 @@ const ParcelaCard: React.FC<ParcelaCardProps> = ({ parcela }) => {
         </div>
       </div>
 
-      {/* Sensores (si la parcela está inactiva, muestra "Datos no disponibles") */}
       <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
         {!parcela.sensor ? (
           <p className="text-center text-gray-500 dark:text-gray-400 font-medium">
@@ -106,20 +112,14 @@ const ParcelaCard: React.FC<ParcelaCardProps> = ({ parcela }) => {
         )}
       </div>
 
-      {/* Último riego */}
       <div className="mt-4 flex items-center text-sm text-gray-500 dark:text-gray-400">
         <DropletIcon className="w-4 h-4 mr-2 text-emerald-500 dark:text-emerald-400" />
         <p>
-          Último riego:{" "}
-          <span className="font-medium">
-            {parcela.ultimo_riego
-              ? new Date(parcela.ultimo_riego).toLocaleString()
-              : "No registrado"}
-          </span>
+          Último riego: <span className="font-medium">{formattedLastIrrigation}</span>
         </p>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default ParcelaCard;
+export default ParcelaCard

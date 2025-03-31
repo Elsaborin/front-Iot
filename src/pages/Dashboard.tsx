@@ -124,7 +124,7 @@ const Dashboard: React.FC = () => {
         const label = document.createElement("div")
         //es el div donde se muesta el nombre de la parcela
         label.className =
-          "bg-white dark:bg-gray-800 text-xs font-medium text-emerald-800 dark:text-emerald-200 px-6 py-4 rounded-md shadow-md mt-1"
+          "bg-white dark:bg-gray-800 text-xs font-medium text-emerald-800 dark:text-emerald-200 px-4 py-2 rounded-md shadow-md mt-1"
         label.textContent = parcela.nombre
 
         markerContainer.appendChild(pulse)

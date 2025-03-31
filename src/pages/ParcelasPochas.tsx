@@ -1,11 +1,11 @@
-import type React from "react";
-import Layout from "../layout/Layout";
-import ParcelaCard from "../components/ParcelaCard";
-import { useInactiveSensors } from "../hooks/useSensorData";
+import type React from "react"
+import Layout from "../layout/Layout"
+import ParcelaCard from "../components/ParcelaCard"
+import { useSensorData } from "../hooks/useSensorData"
 
 const ParcelasPochas: React.FC = () => {
-  const { data, loading, error } = useInactiveSensors();
-  const parcelasInactivas = data?.sensoresInactivos || [];
+  const { data, loading, error } = useSensorData()
+  const parcelasInactivas = data?.inactivas || []
 
   return (
     <Layout>
@@ -40,7 +40,7 @@ const ParcelasPochas: React.FC = () => {
         </div>
       )}
     </Layout>
-  );
-};
+  )
+}
 
-export default ParcelasPochas;
+export default ParcelasPochas
