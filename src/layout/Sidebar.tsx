@@ -1,11 +1,16 @@
+"use client"
+
+import type React from "react"
+
 import type { FC } from "react"
-import { useState } from "react"
-import { HomeIcon, LandPlot, BarChart3Icon } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { useState, useEffect } from "react"
+import { HomeIcon, LandPlot, BarChart3Icon } from "lucide-react"
+import { Link, useLocation } from "react-router-dom"
 
 interface SidebarProps {
-  open: boolean;
-  currentPath: string;
+  open: boolean
+  lastSyncTime?: string
+  onRefresh?: () => void
 }
 
 interface NavItem {
@@ -16,25 +21,55 @@ interface NavItem {
   children?: NavItem[]
 }
 
-const Sidebar: FC<SidebarProps> = ({ open, currentPath }) => {
+const Sidebar: FC<SidebarProps> = ({ open, lastSyncTime, onRefresh }) => {
+  const location = useLocation()
+  const currentPath = location.pathname
   const [expandedItems, setExpandedItems] = useState<string[]>(["Monitoreo"])
+  const [syncTime, setSyncTime] = useState<string>(lastSyncTime || "Hoy, 00:00")
+
+  // Actualizar tiempo de sincronización cuando se recibe una nueva prop
+  useEffect(() => {
+    if (lastSyncTime) {
+      setSyncTime(lastSyncTime)
+    }
+  }, [lastSyncTime])
 
   const toggleExpand = (name: string) => {
     setExpandedItems((prev) => (prev.includes(name) ? prev.filter((item) => item !== name) : [...prev, name]))
   }
 
   const isCurrentPath = (href: string) => {
-    if (href === 'dashboard' && (currentPath === '/' || currentPath === '/dashboard')) {
-      return true;
+    if (href === "dashboard" && (currentPath === "/" || currentPath === "/dashboard")) {
+      return true
     }
-    return currentPath === `/${href}`;
-  };
+    return currentPath === `/${href}`
+  }
 
   const navigation: NavItem[] = [
-    { name: "Dashboard", icon: <HomeIcon className="h-5 w-5" />, href: "dashboard", current: isCurrentPath('dashboard') },
-    { name: "Parcelas Activas", icon: <LandPlot className="h-5 w-5" />, href: "parcelas", current: isCurrentPath('parcelas') },
-    { name: "Parcelas Inactivas", icon: <LandPlot className="h-5 w-5" />, href: "parcelas-pochas", current: isCurrentPath('parcelas-pochas') },
-    { name: "Gráficos", icon: <BarChart3Icon className="h-5 w-5" />, href: "graficos", current: isCurrentPath('graficos') },
+    {
+      name: "Dashboard",
+      icon: <HomeIcon className="h-5 w-5" />,
+      href: "dashboard",
+      current: isCurrentPath("dashboard"),
+    },
+    {
+      name: "Parcelas Activas",
+      icon: <LandPlot className="h-5 w-5" />,
+      href: "parcelas",
+      current: isCurrentPath("parcelas"),
+    },
+    {
+      name: "Parcelas Inactivas",
+      icon: <LandPlot className="h-5 w-5" />,
+      href: "parcelas-pochas",
+      current: isCurrentPath("parcelas-pochas"),
+    },
+    {
+      name: "Gráficos",
+      icon: <BarChart3Icon className="h-5 w-5" />,
+      href: "graficos",
+      current: isCurrentPath("graficos"),
+    },
   ]
 
   const secondaryNavigation: NavItem[] = []
@@ -100,7 +135,9 @@ const Sidebar: FC<SidebarProps> = ({ open, currentPath }) => {
                     }
                   `}
                 >
-                  <span className={`mr-3 ${child.current ? "text-emerald-600 dark:text-emerald-400" : "text-gray-500 dark:text-gray-400"}`}>
+                  <span
+                    className={`mr-3 ${child.current ? "text-emerald-600 dark:text-emerald-400" : "text-gray-500 dark:text-gray-400"}`}
+                  >
                     {child.icon}
                   </span>
                   {child.name}
@@ -122,31 +159,43 @@ const Sidebar: FC<SidebarProps> = ({ open, currentPath }) => {
     >
       <div className="flex flex-col h-full">
         <div className="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
-          <div className="px-4 mb-6">
-            {open && (
-              <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-3 text-xs text-emerald-800 dark:text-emerald-200">
-                <div className="font-medium mb-1">Estado del sistema</div>
-                <div className="flex items-center">
-                  <span className="h-2 w-2 rounded-full bg-emerald-500 mr-2"></span>
-                  <span>Todos los sensores activos</span>
-                </div>
-              </div>
-            )}
-          </div>
-          <nav className="flex-1 px-2 space-y-1">
+          <nav className="flex-1 px-2 space-y-1 mt-6">
             <ul className="space-y-1">{navigation.map(renderNavItem)}</ul>
-            
+
             {open && <div className="border-t border-gray-200 dark:border-gray-700 my-4"></div>}
-            
+
             <ul className="space-y-1">{secondaryNavigation.map(renderNavItem)}</ul>
           </nav>
         </div>
-        
+
         {open && (
           <div className="p-4">
             <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-3 text-xs">
               <div className="font-medium text-emerald-800 dark:text-emerald-200 mb-1">Última sincronización</div>
-              <div className="text-gray-600 dark:text-gray-400">Hoy, 15:30</div>
+              <div className="text-gray-600 dark:text-gray-400 flex justify-between items-center">
+                <span>{syncTime}</span>
+                {onRefresh && (
+                  <button
+                    onClick={onRefresh}
+                    className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-4 w-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                      />
+                    </svg>
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -156,3 +205,4 @@ const Sidebar: FC<SidebarProps> = ({ open, currentPath }) => {
 }
 
 export default Sidebar
+

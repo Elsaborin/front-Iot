@@ -41,7 +41,7 @@ const Dashboard: React.FC = () => {
 
   const fetchData = useCallback(async () => {
     try {
-      const response = await axios.get<ApiResponse>("https://moriahmkt.com/iotapp/updated/")
+      const response = await axios.get<ApiResponse>("http://127.0.0.1:8000/api/mediciones/actuales")
       const newData = response.data
       const currentTime = Date.now()
 
@@ -127,7 +127,7 @@ const Dashboard: React.FC = () => {
           "bg-white dark:bg-gray-800 text-xs font-medium text-emerald-800 dark:text-emerald-200 px-4 py-2 rounded-md shadow-md mt-1"
         label.textContent = parcela.nombre
 
-        markerContainer.appendChild(pulse)
+       
         markerContainer.appendChild(pin)
         markerContainer.appendChild(connector)
         markerContainer.appendChild(label)

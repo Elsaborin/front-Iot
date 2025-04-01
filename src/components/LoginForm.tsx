@@ -97,9 +97,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSubmit }) => {
                 Recordarme
               </label>
             </div>
-            <a href="#" className="text-sm font-medium text-emerald-600 hover:text-emerald-500 dark:text-emerald-400">
-              ¿Olvidaste tu contraseña?
-            </a>
+
           </div>
 
           <button

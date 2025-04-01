@@ -32,36 +32,43 @@ export const useSensorData = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const responseActivas = await axios.get("http://127.0.0.1:8000/api/mediciones/ultimas-parcela")
-        const responseInactivas = await axios.get("http://127.0.0.1:8000/api/parcelas/inactivas")
-
-        console.log("🔹 Respuesta API activas:", responseActivas.data)
-        console.log("🔹 Respuesta API inactivas:", responseInactivas.data)
-
-        // Revisar cómo la API devuelve los datos
         let parcelasActivas = []
-        if (Array.isArray(responseActivas.data)) {
-          parcelasActivas = responseActivas.data // Es un array directo
-        } else if (responseActivas.data?.parcelas) {
-          parcelasActivas = responseActivas.data.parcelas // Es un objeto con la clave "parcelas"
+        let parcelasInactivas = []
+  
+        // Intentamos obtener las activas, pero si falla, seguimos con las inactivas
+        try {
+          const responseActivas = await axios.get("http://127.0.0.1:8000/api/mediciones/ultimas-parcela")
+          if (Array.isArray(responseActivas.data)) {
+            parcelasActivas = responseActivas.data
+          } else if (responseActivas.data?.parcelas) {
+            parcelasActivas = responseActivas.data.parcelas
+          } else if (responseActivas.data?.error) {
+            console.warn("⚠ No hay parcelas activas:", responseActivas.data.error)
+          }
+        } catch (error) {
+          console.error("❌ Error obteniendo parcelas activas:", error)
         }
-
-        const parcelasInactivas = Array.isArray(responseInactivas.data) ? responseInactivas.data : []
-
-        console.log("✅ Parcelas activas procesadas:", parcelasActivas)
-        console.log("✅ Parcelas inactivas procesadas:", parcelasInactivas)
-
+  
+        // Intentamos obtener las inactivas, pero si falla, seguimos con las activas
+        try {
+          const responseInactivas = await axios.get("http://127.0.0.1:8000/api/parcelas/inactivas")
+          parcelasInactivas = Array.isArray(responseInactivas.data) ? responseInactivas.data : []
+        } catch (error) {
+          console.error("❌ Error obteniendo parcelas inactivas:", error)
+        }
+  
         setData({ activas: parcelasActivas, inactivas: parcelasInactivas })
       } catch (error) {
-        console.error("❌ Error fetching data:", error)
+        console.error("❌ Error general:", error)
         setError("Error al obtener los datos")
       } finally {
         setLoading(false)
       }
     }
-
+  
     fetchData()
   }, [])
+  
 
   useEffect(() => {
     console.log("📌 Datos guardados en el estado:", data)

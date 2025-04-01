@@ -9,7 +9,7 @@ const Parcelas: React.FC = () => {
   console.log("📌 Data en Parcelas.tsx:", data)
 
   const parcelasActivas = data?.activas ?? []
-  const parcelasInactivas = data?.inactivas ?? []
+  
 
   return (
     <Layout>

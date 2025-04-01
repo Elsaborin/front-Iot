@@ -18,31 +18,60 @@ import {
   LineChart,
   Line,
   Area,
+  AreaChart,
 } from "recharts"
+
+// Definición de tipos para los datos de la API
+interface Sensor {
+  id: number
+  name: string
+  unit: string
+  created_at: string
+  updated_at: string
+}
+
+interface Measurement {
+  id: number
+  sensor_id: number
+  value: string
+  date: string
+  registered_in: string
+  created_at: string
+  updated_at: string
+  sensor: Sensor
+}
 
 // Hook personalizado para obtener datos de sensores
 const useSensorData = () => {
-  const [data, setData] = useState(null)
+  const [data, setData] = useState<Measurement[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
   const [historicalData, setHistoricalData] = useState([])
   const [frequencyData, setFrequencyData] = useState([])
+  const [latestReadings, setLatestReadings] = useState({
+    temperatura: 0,
+    humedad: 0,
+    lluvia: 0,
+    sol: 0,
+  })
 
   const fetchData = async () => {
     try {
       setRefreshing(true)
-      const response = await axios.get("https://moriahmkt.com/iotapp/updated/")
+      const response = await axios.get("http://127.0.0.1:8000/api/mediciones/generales")
       setData(response.data)
 
-      // Generar datos históricos basados en los datos actuales
-      if (response.data.sensores) {
-        const timeSeriesData = generateTimeSeriesData(response.data.sensores)
-        setHistoricalData(timeSeriesData)
+      // Procesar los datos para obtener las últimas lecturas
+      const readings = processLatestReadings(response.data)
+      setLatestReadings(readings)
 
-        // Generar datos de frecuencia para el polígono
-        setFrequencyData(generateFrequencyData(timeSeriesData))
-      }
+      // Generar datos históricos basados en los datos de la API
+      const timeSeriesData = processHistoricalData(response.data)
+      setHistoricalData(timeSeriesData)
+
+      // Generar datos de frecuencia para el polígono
+      setFrequencyData(generateFrequencyData(timeSeriesData))
 
       setLoading(false)
       setRefreshing(false)
@@ -63,14 +92,89 @@ const useSensorData = () => {
     return () => clearInterval(intervalId)
   }, [])
 
-  return { data, loading, error, refreshData: fetchData, refreshing, historicalData, frequencyData }
+  return {
+    data,
+    loading,
+    error,
+    refreshData: fetchData,
+    refreshing,
+    historicalData,
+    frequencyData,
+    latestReadings,
+  }
 }
 
-interface SensorData {
-  humedad: number
-  temperatura: number
-  lluvia: number
-  sol: number
+// Función para procesar las últimas lecturas de cada sensor
+const processLatestReadings = (measurements: Measurement[]) => {
+  const readings = {
+    temperatura: 0,
+    humedad: 0,
+    lluvia: 0,
+    sol: 0,
+  }
+
+  // Agrupar mediciones por tipo de sensor
+  const sensorGroups = measurements.reduce((groups, measurement) => {
+    const sensorName = measurement.sensor.name.toLowerCase()
+    if (!groups[sensorName]) {
+      groups[sensorName] = []
+    }
+    groups[sensorName].push(measurement)
+    return groups
+  }, {})
+
+  // Para cada tipo de sensor, obtener la medición más reciente
+  Object.keys(sensorGroups).forEach((sensorName) => {
+    if (readings.hasOwnProperty(sensorName)) {
+      // Ordenar por fecha descendente y tomar el primer elemento
+      const sortedMeasurements = sensorGroups[sensorName].sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+      )
+
+      if (sortedMeasurements.length > 0) {
+        readings[sensorName] = Number.parseFloat(sortedMeasurements[0].value)
+      }
+    }
+  })
+
+  return readings
+}
+
+// Función para procesar datos históricos de la API
+const processHistoricalData = (measurements: Measurement[]) => {
+  // Agrupar mediciones por fecha
+  const measurementsByDate = measurements.reduce((groups, measurement) => {
+    // Extraer solo la fecha (sin hora)
+    const date = measurement.date.split(" ")[0]
+    if (!groups[date]) {
+      groups[date] = {
+        fecha: formatDate(date),
+        temperatura: 0,
+        humedad: 0,
+        lluvia: 0,
+        sol: 0,
+      }
+    }
+
+    // Asignar valor según el tipo de sensor
+    const sensorName = measurement.sensor.name.toLowerCase()
+    if (groups[date].hasOwnProperty(sensorName)) {
+      groups[date][sensorName] = Number.parseFloat(measurement.value)
+    }
+
+    return groups
+  }, {})
+
+  // Convertir el objeto a un array y ordenar por fecha
+  return Object.values(measurementsByDate).sort((a, b) => {
+    return new Date(a.fecha).getTime() - new Date(b.fecha).getTime()
+  })
+}
+
+// Función para formatear la fecha
+const formatDate = (dateString) => {
+  const date = new Date(dateString)
+  return date.toLocaleDateString("es-ES", { day: "numeric", month: "short" })
 }
 
 const COLORS = {
@@ -78,33 +182,6 @@ const COLORS = {
   temperatura: "#ef4444",
   lluvia: "#3b82f6",
   sol: "#f59e0b",
-}
-
-// Variables de estado para datos históricos y de frecuencia
-// let historicalData = []
-// let frequencyData = []
-
-// Función para generar datos históricos simulados
-const generateTimeSeriesData = (sensorData: SensorData) => {
-  const now = new Date()
-  const data = []
-
-  for (let i = 6; i >= 0; i--) {
-    const date = new Date(now)
-    date.setDate(date.getDate() - i)
-
-    const randomFactor = 0.8 + Math.random() * 0.4
-
-    data.push({
-      fecha: date.toLocaleDateString("es-ES", { day: "numeric", month: "short" }),
-      humedad: Math.round(sensorData.humedad * randomFactor),
-      temperatura: Math.round(sensorData.temperatura * randomFactor),
-      lluvia: Math.round(sensorData.lluvia * randomFactor),
-      sol: Math.round(sensorData.sol * randomFactor),
-    })
-  }
-
-  return data
 }
 
 // Función para generar datos de frecuencia para humedad y lluvia
@@ -123,11 +200,11 @@ const generateFrequencyData = (historicalData) => {
   ]
 
   const lluviaRanges = [
-    { min: 0, max: 20, label: "0-20mm" },
-    { min: 20, max: 40, label: "20-40mm" },
-    { min: 40, max: 60, label: "40-60mm" },
-    { min: 60, max: 80, label: "60-80mm" },
-    { min: 80, max: 100, label: "80-100mm" },
+    { min: 0, max: 5, label: "0-5mm" },
+    { min: 5, max: 10, label: "5-10mm" },
+    { min: 10, max: 15, label: "10-15mm" },
+    { min: 15, max: 20, label: "15-20mm" },
+    { min: 20, max: 100, label: ">20mm" },
   ]
 
   // Inicializar contadores
@@ -176,7 +253,8 @@ const GraficasAvanzadas: React.FC = () => {
   const location = useLocation()
   const navigate = useNavigate()
   const [activeChart, setActiveChart] = useState<string>("barras")
-  const { data, loading, error, refreshData, refreshing, historicalData, frequencyData } = useSensorData()
+  const { data, loading, error, refreshData, refreshing, historicalData, frequencyData, latestReadings } =
+    useSensorData()
 
   useEffect(() => {
     const params = new URLSearchParams(location.search)
@@ -200,7 +278,9 @@ const GraficasAvanzadas: React.FC = () => {
               <div className="w-12 h-12 bg-emerald-50 rounded-lg flex items-center justify-center dark:bg-emerald-900">
                 <BarChart3Icon className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
               </div>
-              <h2 className="ml-4 text-xl font-bold text-gray-800 dark:text-white">Temperatura y Humedad</h2>
+              <h2 className="ml-4 text-xl font-bold text-gray-800 dark:text-white">
+                Comparativa: Temperatura y Humedad por Día
+              </h2>
             </div>
             <div className="h-[calc(100vh-300px)]">
               <ResponsiveContainer width="100%" height="100%">
@@ -222,6 +302,11 @@ const GraficasAvanzadas: React.FC = () => {
                       borderColor: "#e5e7eb",
                       color: "#4b5563",
                     }}
+                    formatter={(value, name) => {
+                      if (name === "Temperatura (°C)") return [`${value} °C`, name]
+                      if (name === "Humedad (%)") return [`${value} %`, name]
+                      return [value, name]
+                    }}
                   />
                   <Legend />
                   <Bar name="Temperatura (°C)" dataKey="temperatura" fill={COLORS.temperatura} />
@@ -230,9 +315,9 @@ const GraficasAvanzadas: React.FC = () => {
               </ResponsiveContainer>
             </div>
             <div className="mt-4 text-sm text-gray-500 dark:text-gray-400">
-              <p>Este gráfico de barras muestra la comparación entre temperatura y humedad por día.</p>
+              <p>Este gráfico muestra la relación entre temperatura y humedad para cada día registrado.</p>
               <p className="mt-2">
-                Permite visualizar la relación entre estos dos parámetros clave para el monitoreo agrícola.
+                Observe cómo la humedad tiende a ser inversamente proporcional a la temperatura en muchos casos.
               </p>
             </div>
           </div>
@@ -245,7 +330,7 @@ const GraficasAvanzadas: React.FC = () => {
                 <LineChartIcon className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
               </div>
               <h2 className="ml-4 text-xl font-bold text-gray-800 dark:text-white">
-                Lluvia y Sol a lo Largo del Tiempo
+                Tendencia: Precipitaciones y Exposición Solar
               </h2>
             </div>
             <div className="h-[calc(100vh-300px)]">
@@ -268,6 +353,11 @@ const GraficasAvanzadas: React.FC = () => {
                       borderColor: "#e5e7eb",
                       color: "#4b5563",
                     }}
+                    formatter={(value, name) => {
+                      if (name === "Lluvia (mm)") return [`${value} mm`, name]
+                      if (name === "Sol (%)") return [`${value} %`, name]
+                      return [value, name]
+                    }}
                   />
                   <Legend />
                   <Line
@@ -283,9 +373,10 @@ const GraficasAvanzadas: React.FC = () => {
               </ResponsiveContainer>
             </div>
             <div className="mt-4 text-sm text-gray-500 dark:text-gray-400">
-              <p>Este gráfico muestra la evolución de la lluvia y el sol a lo largo del tiempo.</p>
+              <p>Este gráfico muestra la correlación inversa entre precipitaciones y exposición solar.</p>
               <p className="mt-2">
-                Permite identificar patrones y correlaciones entre estos dos factores climáticos importantes.
+                Los días con mayor precipitación suelen tener menor exposición solar, lo que afecta directamente al
+                crecimiento de los cultivos.
               </p>
             </div>
           </div>
@@ -298,12 +389,12 @@ const GraficasAvanzadas: React.FC = () => {
                 <AreaChartIcon className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
               </div>
               <h2 className="ml-4 text-xl font-bold text-gray-800 dark:text-white">
-                Polígono de Frecuencias: Humedad y Lluvia
+                Distribución: Frecuencia de Humedad y Precipitaciones
               </h2>
             </div>
             <div className="h-[calc(100vh-300px)]">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart
+                <AreaChart
                   data={frequencyData}
                   margin={{
                     top: 20,
@@ -316,7 +407,7 @@ const GraficasAvanzadas: React.FC = () => {
                   <XAxis dataKey="categoria" tick={{ fill: "#4b5563" }} />
                   <YAxis
                     tick={{ fill: "#4b5563" }}
-                    label={{ value: "Frecuencia", angle: -90, position: "insideLeft" }}
+                    label={{ value: "Frecuencia (días)", angle: -90, position: "insideLeft" }}
                   />
                   <Tooltip
                     contentStyle={{
@@ -326,33 +417,94 @@ const GraficasAvanzadas: React.FC = () => {
                     }}
                   />
                   <Legend />
-                  <Line
+                  <Area
                     type="monotone"
-                    name="Humedad"
+                    name="Humedad (días)"
                     dataKey="humedad"
                     stroke={COLORS.humedad}
-                    strokeWidth={2}
-                    dot={{ r: 5, fill: COLORS.humedad }}
-                    activeDot={{ r: 7 }}
+                    fill={COLORS.humedad}
+                    fillOpacity={0.3}
                   />
-                  <Line
+                  <Area
                     type="monotone"
-                    name="Lluvia"
+                    name="Lluvia (días)"
                     dataKey="lluvia"
                     stroke={COLORS.lluvia}
-                    strokeWidth={2}
-                    dot={{ r: 5, fill: COLORS.lluvia }}
-                    activeDot={{ r: 7 }}
+                    fill={COLORS.lluvia}
+                    fillOpacity={0.3}
                   />
-                  <Area type="monotone" dataKey="humedad" fill={COLORS.humedad} stroke="none" fillOpacity={0.1} />
-                  <Area type="monotone" dataKey="lluvia" fill={COLORS.lluvia} stroke="none" fillOpacity={0.1} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="mt-4 text-sm text-gray-500 dark:text-gray-400">
+              <p>Este gráfico muestra la distribución de frecuencias de humedad y precipitaciones.</p>
+              <p className="mt-2">
+                Permite identificar los rangos más comunes de humedad y lluvia, facilitando la planificación de riego y
+                otras actividades agrícolas.
+              </p>
+            </div>
+          </div>
+        )
+      case "temperatura":
+        return (
+          <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100 h-full dark:bg-gray-800 dark:border-gray-700">
+            <div className="flex items-center mb-6">
+              <div className="w-12 h-12 bg-emerald-50 rounded-lg flex items-center justify-center dark:bg-emerald-900">
+                <LineChartIcon className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <h2 className="ml-4 text-xl font-bold text-gray-800 dark:text-white">Evolución de Temperatura</h2>
+            </div>
+            <div className="h-[calc(100vh-300px)]">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart
+                  data={historicalData}
+                  margin={{
+                    top: 20,
+                    right: 30,
+                    left: 20,
+                    bottom: 20,
+                  }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis dataKey="fecha" tick={{ fill: "#4b5563" }} />
+                  <YAxis
+                    tick={{ fill: "#4b5563" }}
+                    domain={["dataMin - 2", "dataMax + 2"]}
+                    label={{ value: "Temperatura (°C)", angle: -90, position: "insideLeft" }}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "#ffffff",
+                      borderColor: "#e5e7eb",
+                      color: "#4b5563",
+                    }}
+                    formatter={(value) => [`${value} °C`, "Temperatura"]}
+                  />
+                  <Legend />
+                  <Line
+                    type="monotone"
+                    name="Temperatura (°C)"
+                    dataKey="temperatura"
+                    stroke={COLORS.temperatura}
+                    activeDot={{ r: 8 }}
+                    strokeWidth={2}
+                    dot={{ stroke: COLORS.temperatura, strokeWidth: 2, r: 4, fill: "white" }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="temperatura"
+                    fill={COLORS.temperatura}
+                    stroke="none"
+                    fillOpacity={0.1}
+                  />
                 </LineChart>
               </ResponsiveContainer>
             </div>
             <div className="mt-4 text-sm text-gray-500 dark:text-gray-400">
-              <p>Este polígono de frecuencias muestra la distribución de los valores de humedad y lluvia.</p>
+              <p>Este gráfico muestra la evolución de la temperatura a lo largo del tiempo.</p>
               <p className="mt-2">
-                Permite identificar los rangos más comunes y comparar la distribución de ambas variables.
+                Las fluctuaciones de temperatura son críticas para el desarrollo de cultivos y pueden indicar cambios
+                estacionales o anomalías climáticas.
               </p>
             </div>
           </div>
@@ -370,8 +522,10 @@ const GraficasAvanzadas: React.FC = () => {
     <Layout>
       <div className="mb-6 flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Análisis Agrícola</h1>
-          <p className="text-gray-500 dark:text-gray-400">Visualización de datos y tendencias</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Monitoreo Agrícola en Tiempo Real</h1>
+          <p className="text-gray-500 dark:text-gray-400">
+            Análisis de datos de sensores para optimización de cultivos
+          </p>
         </div>
         <div className="flex items-center space-x-3">
           <button
@@ -420,7 +574,7 @@ const GraficasAvanzadas: React.FC = () => {
                   <BarChart3Icon className="h-5 w-5 mr-3 text-emerald-600 dark:text-emerald-400" />
                   <div className="text-left">
                     <div>Temperatura y Humedad</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">Gráfico de barras</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">Comparativa diaria</div>
                   </div>
                 </button>
                 <button
@@ -434,7 +588,7 @@ const GraficasAvanzadas: React.FC = () => {
                   <LineChartIcon className="h-5 w-5 mr-3 text-emerald-600 dark:text-emerald-400" />
                   <div className="text-left">
                     <div>Lluvia y Sol</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">Tendencias temporales</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">Correlación inversa</div>
                   </div>
                 </button>
                 <button
@@ -447,25 +601,41 @@ const GraficasAvanzadas: React.FC = () => {
                 >
                   <AreaChartIcon className="h-5 w-5 mr-3 text-emerald-600 dark:text-emerald-400" />
                   <div className="text-left">
-                    <div>Polígono de Frecuencias</div>
+                    <div>Distribución de Frecuencias</div>
                     <div className="text-xs text-gray-500 dark:text-gray-400">Humedad y Lluvia</div>
+                  </div>
+                </button>
+                <button
+                  onClick={() => handleChartChange("temperatura")}
+                  className={`flex items-center w-full px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${
+                    activeChart === "temperatura"
+                      ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400"
+                      : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700"
+                  }`}
+                >
+                  <LineChartIcon className="h-5 w-5 mr-3 text-emerald-600 dark:text-emerald-400" />
+                  <div className="text-left">
+                    <div>Evolución de Temperatura</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">Tendencia temporal</div>
                   </div>
                 </button>
               </div>
 
-              {data && (
+              {!loading && (
                 <div className="p-4 border-t border-gray-100 dark:border-gray-700">
-                  <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Resumen de sensores</h4>
+                  <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                    Última lectura de sensores
+                  </h4>
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center">
-                        <div className="w-8 h-8 rounded-full bg-emerald-50 dark:bg-emerald-900/50 flex items-center justify-center">
-                          <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
+                        <div className="w-8 h-8 rounded-full bg-red-50 dark:bg-red-900/50 flex items-center justify-center">
+                          <div className="w-3 h-3 rounded-full bg-red-500"></div>
                         </div>
                         <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">Temperatura</span>
                       </div>
                       <span className="text-sm font-medium text-gray-900 dark:text-white">
-                        {data.sensores.temperatura}°C
+                        {latestReadings.temperatura}°C
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
@@ -476,29 +646,34 @@ const GraficasAvanzadas: React.FC = () => {
                         <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">Humedad</span>
                       </div>
                       <span className="text-sm font-medium text-gray-900 dark:text-white">
-                        {data.sensores.humedad}%
+                        {latestReadings.humedad}%
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center">
-                        <div className="w-8 h-8 rounded-full bg-emerald-50 dark:bg-emerald-900/50 flex items-center justify-center">
-                          <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
+                        <div className="w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-900/50 flex items-center justify-center">
+                          <div className="w-3 h-3 rounded-full bg-blue-500"></div>
                         </div>
                         <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">Lluvia</span>
                       </div>
                       <span className="text-sm font-medium text-gray-900 dark:text-white">
-                        {data.sensores.lluvia} mm
+                        {latestReadings.lluvia} mm
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center">
-                        <div className="w-8 h-8 rounded-full bg-emerald-50 dark:bg-emerald-900/50 flex items-center justify-center">
-                          <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
+                        <div className="w-8 h-8 rounded-full bg-amber-50 dark:bg-amber-900/50 flex items-center justify-center">
+                          <div className="w-3 h-3 rounded-full bg-amber-500"></div>
                         </div>
                         <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">Sol</span>
                       </div>
-                      <span className="text-sm font-medium text-gray-900 dark:text-white">{data.sensores.sol}%</span>
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">{latestReadings.sol}%</span>
                     </div>
+                  </div>
+                  <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      Última actualización: {new Date().toLocaleTimeString()}
+                    </p>
                   </div>
                 </div>
               )}

@@ -25,6 +25,6 @@ export interface ApiResponse {
 }
 
 export const fetchApiData = async (): Promise<ApiResponse> => {
-  const response = await axios.get('https://moriahmkt.com/iotapp/test/');
+  const response = await axios.get('https://moriahmkt.com/iotapp/updated/');
   return response.data;
 };
